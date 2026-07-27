@@ -1,0 +1,38 @@
+{
+  "codex": {
+    "verified_at": "2026-07-27",
+    "official_documentation": ["https://developers.openai.com/codex/skills", "https://developers.openai.com/codex/mcp"],
+    "skill_roots": [".agents/skills"],
+    "invocation": {"supported": "mcp", "command": "codex mcp add invoice-layout -- invoice-layout mcp"}
+  },
+  "claude-code": {
+    "verified_at": "2026-07-27",
+    "official_documentation": ["https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview", "https://code.claude.com/docs/en/mcp"],
+    "skill_roots": [".claude/skills", "~/.claude/skills"],
+    "invocation": {"supported": "mcp", "command": "claude mcp add --transport stdio invoice-layout -- invoice-layout mcp"}
+  },
+  "openclaw": {
+    "verified_at": "2026-07-27",
+    "official_documentation": ["https://docs.openclaw.ai/tools/skills"],
+    "skill_roots": ["skills", ".agents/skills", "~/.openclaw/skills"],
+    "invocation": {"supported": "cli", "command": "openclaw skills install ./path/to/invoice-layout-agent"}
+  },
+  "workbuddy": {
+    "verified_at": "2026-07-27",
+    "official_documentation": ["https://docs.work-buddy.ai/", "https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview", "https://code.claude.com/docs/en/mcp"],
+    "skill_roots": [".claude/skills", "~/.claude/skills"],
+    "invocation": {"supported": "mcp", "command": "claude mcp add --transport stdio invoice-layout -- invoice-layout mcp"}
+  },
+  "qoder": {
+    "verified_at": "2026-07-27",
+    "official_documentation": ["https://docs.qoder.com/qoderwork/skills", "https://docs.qoder.com/en/cli/Skills", "https://docs.qoder.com/en/cli/mcp-servers"],
+    "skill_roots": ["~/.qoderwork/skills", "~/.qoder/skills"],
+    "invocation": {"supported": "mcp", "command": "qodercli mcp add invoice-layout -- invoice-layout mcp"}
+  },
+  "qclaw": {
+    "verified_at": "2026-07-27",
+    "official_documentation": ["https://github.com/QuantumClaw/QClaw"],
+    "skill_roots": ["ClawHub", "Skills dashboard"],
+    "invocation": {"supported": "cli", "command": "qclaw skill search invoice-layout-agent && qclaw skill install <official-search-result-slug>"}
+  }
+}

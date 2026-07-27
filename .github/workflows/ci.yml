@@ -1,0 +1,112 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        python: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install Linux native dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk-headless maven poppler-utils tesseract-ocr tesseract-ocr-chi-sim fonts-noto-cjk unar
+
+      - name: Install macOS native dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install openjdk@17 maven poppler tesseract tesseract-lang unar
+          brew install --cask font-noto-sans-cjk
+          echo "JAVA_HOME=$(/usr/libexec/java_home -v 17)" >> "$GITHUB_ENV"
+          echo "$(/usr/libexec/java_home -v 17)/bin" >> "$GITHUB_PATH"
+
+      - name: Install Windows native dependencies
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install temurin17 maven poppler 7zip --no-progress --yes
+          choco install tesseract --no-progress --yes --params "'/Language:chi_sim'"
+          $fontDirectory = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+          $fontFile = Join-Path $fontDirectory 'NotoSansCJKsc-Regular.otf'
+          New-Item -ItemType Directory -Force -Path $fontDirectory | Out-Null
+          Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/notofonts/noto-cjk/Sans2.004/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf' -OutFile $fontFile
+          $fontHash = (Get-FileHash -LiteralPath $fontFile -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($fontHash -ne '41595827b2bc0d83d089e65f5a6f9e6a2f518119b385132b39b4b5fd115552e8') { throw 'Noto CJK font checksum mismatch' }
+          New-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'Noto Sans CJK SC Regular (OpenType)' -Value $fontFile -PropertyType String -Force | Out-Null
+          $javaHome = (Get-ChildItem 'C:\Program Files\Eclipse Adoptium' -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
+          "JAVA_HOME=$javaHome" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "$javaHome\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Ruff
+        run: python -m ruff check .
+      - name: Mypy
+        run: python -m mypy src
+      - name: Tests and coverage
+        run: python -m pytest -q --cov=invoice_layout --cov-report=term-missing --cov-fail-under=85
+      - name: Validate platform adapters
+        run: python scripts/validate_adapters.py
+      - name: Enforce public-tree privacy boundary
+        run: python scripts/check_public_tree.py
+      - name: Force rebuild bundled OFD renderer from source
+        run: python -c "from pathlib import Path; Path('src/invoice_layout/bin/ofd-renderer.jar').unlink()"
+      - name: Build wheel and OFD renderer
+        run: python -m build --wheel
+      - name: Inspect wheel contents
+        run: python -c "import glob, zipfile; wheels=glob.glob('dist/*.whl'); assert len(wheels) == 1; archive=zipfile.ZipFile(wheels[0]); assert 'invoice_layout/bin/ofd-renderer.jar' in archive.namelist()"
+      - name: Smoke test bundled OFD renderer entrypoint
+        shell: bash
+        run: |
+          set +e
+          output=$(java -jar src/invoice_layout/bin/ofd-renderer.jar 2>&1)
+          status=$?
+          set -e
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -q 'usage: OFDRenderer'
+      - name: Check runtime dependencies
+        run: invoice-layout doctor
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build pinned runtime image
+        run: docker build -t invoice-layout-agent:test .
+      - name: Check container runtime dependencies
+        run: docker run --rm invoice-layout-agent:test doctor
+      - name: Process a synthetic geometry-only PDF
+        run: |
+          docker run --rm --entrypoint /bin/sh invoice-layout-agent:test -c '
+            set -eu
+            mkdir -p /case/input /case/work /case/output
+            python -c "from reportlab.pdfgen.canvas import Canvas; c=Canvas(\"/case/input/geometry.pdf\", pagesize=(288,144)); c.rect(24,24,240,96); c.showPage(); c.save()"
+            set +e
+            invoice-layout process /case/input/geometry.pdf --provider local --work-dir /case/work --output-dir /case/output
+            status=$?
+            set -e
+            test "$status" -eq 0 -o "$status" -eq 2
+            test -s /case/output/printable.pdf
+            test -s /case/output/sendable.pdf
+            test -s /case/output/report.json
+          '

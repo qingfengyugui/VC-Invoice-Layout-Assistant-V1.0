@@ -1,0 +1,4 @@
+interface:
+  display_name: "Invoice Layout Agent"
+  short_description: "Prepare private invoice layout batches safely"
+  default_prompt: "Use $invoice-layout-agent to prepare and lay out a private invoice batch."

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "invoice-layout-agent"
+version = "0.1.0"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "pydantic>=2.10,<3", "pydantic-settings>=2.7,<3", "typer>=0.15,<1",
+  "Pillow>=11,<12", "pypdf>=5,<6",
+  "reportlab>=4.2,<5", "pdfplumber>=0.11,<1", "rapidfuzz>=3.11,<4",
+  "py7zr>=1.1,<2", "pillow-heif>=0.21,<1",
+  "defusedxml>=0.7,<1", "mcp>=1.27,<2", "rarfile>=4.2,<5",
+  "pypdfium2>=5.12.1,<6"
+]
+
+[project.optional-dependencies]
+dev = ["build>=1.2,<2", "pytest>=8.3,<9", "pytest-cov>=6,<7", "mypy>=1.14,<2", "ruff>=0.9,<1", "types-defusedxml>=0.7,<1", "PyYAML>=6,<7"]
+
+[project.scripts]
+invoice-layout = "invoice_layout.cli:app"
+invoice-layout-mcp = "invoice_layout.mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/qingfengyugui/invoice-layout-agent"
+Source = "https://github.com/qingfengyugui/invoice-layout-agent"
+Issues = "https://github.com/qingfengyugui/invoice-layout-agent/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/invoice_layout"]
+force-include = {"src/invoice_layout/bin/ofd-renderer.jar" = "invoice_layout/bin/ofd-renderer.jar"}
+
+[tool.hatch.build.hooks.custom]
+path = "tools/hatch_build.py"

@@ -1,0 +1,170 @@
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  portable:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows-x64
+            executable: dist/invoice-layout.exe
+            archive: zip
+          - os: ubuntu-24.04
+            target: linux-x64
+            executable: dist/invoice-layout
+            archive: tar.gz
+          - os: macos-15
+            target: macos-arm64
+            executable: dist/invoice-layout
+            archive: tar.gz
+          - os: macos-15-intel
+            target: macos-x64
+            executable: dist/invoice-layout
+            archive: tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install 7-Zip on Windows
+        if: runner.os == 'Windows'
+        run: choco install 7zip --no-progress --yes
+      - name: Install 7-Zip on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y 7zip
+      - name: Install 7-Zip on macOS
+        if: runner.os == 'macOS'
+        run: brew install sevenzip
+
+      - name: Rebuild signed-safe OFD renderer
+        working-directory: tools/ofd-renderer
+        run: mvn -q -DskipTests clean package
+      - name: Stage OFD renderer
+        shell: python
+        run: |
+          from pathlib import Path
+          import shutil
+          target = Path("src/invoice_layout/bin/ofd-renderer.jar")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          shutil.copy2("tools/ofd-renderer/target/ofd-renderer.jar", target)
+
+      - name: Install standalone build dependencies
+        run: python -m pip install ".[dev]" "pyinstaller>=6.14,<7"
+      - name: Build single executable
+        run: >-
+          python -m PyInstaller --noconfirm --clean --onefile
+          --name invoice-layout
+          --collect-data invoice_layout
+          --collect-all pypdfium2
+          --collect-all mcp
+          --collect-all reportlab
+          --collect-all pillow_heif
+          --hidden-import py7zr
+          --hidden-import rarfile
+          tools/standalone_entry.py
+
+      - name: Locate native dependencies on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "SEVEN_ZIP=C:\Program Files\7-Zip\7z.exe" | Out-File $env:GITHUB_ENV -Append
+      - name: Locate native dependencies on Linux
+        if: runner.os == 'Linux'
+        run: |
+          echo "SEVEN_ZIP=$(command -v 7zz)" >> "$GITHUB_ENV"
+      - name: Locate native dependencies on macOS
+        if: runner.os == 'macOS'
+        run: |
+          prefix=$(brew --prefix sevenzip)
+          echo "SEVEN_ZIP=$prefix/bin/7zz" >> "$GITHUB_ENV"
+      - name: Fetch upstream 7-Zip license notice
+        run: python -c "from urllib.request import urlretrieve; urlretrieve('https://raw.githubusercontent.com/ip7z/7zip/main/DOC/License.txt', '7zip-License.txt')"
+
+      - name: Build complete runtime bundle
+        shell: bash
+        run: >-
+          python tools/build_portable_bundle.py
+          --project-root .
+          --executable "${{ matrix.executable }}"
+          --java-home "$JAVA_HOME"
+          --seven-zip "$SEVEN_ZIP"
+          --seven-zip-license "7zip-License.txt"
+          --output "release/invoice-layout-agent-${{ matrix.target }}"
+      - name: Verify bundled native layout
+        shell: python
+        run: |
+          from pathlib import Path
+          root = Path("release/invoice-layout-agent-${{ matrix.target }}")
+          assert (root / "native/java").is_dir()
+          assert any((root / "native/bin").glob("7z*"))
+
+      - name: Smoke test complete Windows runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $exe = "release\invoice-layout-agent-${{ matrix.target }}\invoice-layout.exe"
+          & $exe doctor
+          python -c "from reportlab.pdfgen.canvas import Canvas; c=Canvas('geometry.pdf',pagesize=(288,144)); c.rect(24,24,240,96); c.showPage(); c.save()"
+          & $exe process geometry.pdf --provider local --work-dir private-work --output-dir final-output
+          if ($LASTEXITCODE -notin 0,2) { exit $LASTEXITCODE }
+          if (-not (Test-Path final-output\printable.pdf) -or -not (Test-Path final-output\sendable.pdf)) { throw 'portable smoke outputs missing' }
+      - name: Smoke test complete Unix runtime
+        if: runner.os != 'Windows'
+        run: |
+          executable="release/invoice-layout-agent-${{ matrix.target }}/invoice-layout"
+          "$executable" doctor
+          python -c "from reportlab.pdfgen.canvas import Canvas; c=Canvas('geometry.pdf',pagesize=(288,144)); c.rect(24,24,240,96); c.showPage(); c.save()"
+          set +e
+          "$executable" process geometry.pdf --provider local --work-dir private-work --output-dir final-output
+          status=$?
+          set -e
+          test "$status" -eq 0 -o "$status" -eq 2
+          test -s final-output/printable.pdf
+          test -s final-output/sendable.pdf
+
+      - name: Archive Windows bundle
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: Compress-Archive -Path "release\invoice-layout-agent-${{ matrix.target }}\*" -DestinationPath "release\invoice-layout-agent-${{ matrix.target }}.zip"
+      - name: Archive Unix bundle
+        if: matrix.archive == 'tar.gz'
+        run: tar -C "release/invoice-layout-agent-${{ matrix.target }}" -czf "release/invoice-layout-agent-${{ matrix.target }}.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: invoice-layout-agent-${{ matrix.target }}
+          path: release/invoice-layout-agent-${{ matrix.target }}.${{ matrix.archive }}
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: portable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: invoice-layout-agent-*
+          path: release-assets
+          merge-multiple: true
+      - name: Generate SHA256SUMS
+        working-directory: release-assets
+        run: sha256sum invoice-layout-agent-* > SHA256SUMS
+      - name: Publish verified release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" release-assets/* --verify-tag --generate-notes
