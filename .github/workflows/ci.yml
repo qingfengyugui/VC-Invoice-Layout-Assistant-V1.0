@@ -42,13 +42,6 @@ jobs:
         run: |
           choco install temurin17 maven poppler 7zip --no-progress --yes
           choco install tesseract --no-progress --yes --params "'/Language:chi_sim'"
-          $fontDirectory = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
-          $fontFile = Join-Path $fontDirectory 'NotoSansCJKsc-Regular.otf'
-          New-Item -ItemType Directory -Force -Path $fontDirectory | Out-Null
-          Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/notofonts/noto-cjk/Sans2.004/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf' -OutFile $fontFile
-          $fontHash = (Get-FileHash -LiteralPath $fontFile -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($fontHash -ne '41595827b2bc0d83d089e65f5a6f9e6a2f518119b385132b39b4b5fd115552e8') { throw 'Noto CJK font checksum mismatch' }
-          New-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts' -Name 'Noto Sans CJK SC Regular (OpenType)' -Value $fontFile -PropertyType String -Force | Out-Null
           $javaHome = (Get-ChildItem 'C:\Program Files\Eclipse Adoptium' -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
           "JAVA_HOME=$javaHome" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "$javaHome\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append

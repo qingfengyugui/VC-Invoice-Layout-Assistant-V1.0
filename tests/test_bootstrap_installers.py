@@ -58,3 +58,18 @@ def test_linux_release_locates_ubuntu_noble_7zip_binary() -> None:
     )
 
     assert 'echo "SEVEN_ZIP=$(command -v 7z)"' in workflow
+
+
+def test_ci_pins_java17_compiler_and_avoids_mutable_font_download() -> None:
+    pom = (ROOT / "tools" / "ofd-renderer" / "pom.xml").read_text(
+        encoding="utf-8"
+    )
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "<artifactId>maven-compiler-plugin</artifactId>" in pom
+    assert "<version>3.13.0</version>" in pom
+    assert "<release>17</release>" in pom
+    assert "NotoSansCJKsc-Regular.otf" not in ci
+    assert "raw.githubusercontent.com/notofonts" not in ci

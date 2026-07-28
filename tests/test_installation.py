@@ -137,12 +137,10 @@ def test_ci_has_exact_cross_platform_matrix_and_verification_gates() -> None:
         "poppler",
         "tesseract",
         "/language:chi_sim",
-        "notosanscjksc-regular.otf",
-        "get-filehash",
-        "currentversion\\fonts",
         "7zip",
     ):
         assert dependency in windows
+    assert "raw.githubusercontent.com/notofonts" not in windows
     for gate in (
         'pip install -e ".[dev]"',
         "python -m ruff check .",
