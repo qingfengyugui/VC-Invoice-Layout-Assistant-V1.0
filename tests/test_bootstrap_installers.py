@@ -15,7 +15,7 @@ def test_bootstrap_installers_download_verified_complete_runtime_only() -> None:
         assert "RUNTIME.md" in script
         lowered = script.casefold()
         assert "__repository__" not in lowered
-        assert "qingfengyugui/invoice-layout-agent" in lowered
+        assert "qingfengyugui/vc-invoice-layout-assistant-v1.0" in lowered
         for forbidden in (
             "pip install",
             "winget install",
@@ -33,7 +33,7 @@ def test_readme_has_publishable_install_urls_without_owner_placeholder() -> None
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
     assert "<owner>" not in readme
-    assert "qingfengyugui/invoice-layout-agent" in readme
+    assert "qingfengyugui/VC-Invoice-Layout-Assistant-V1.0" in readme
 
 
 def test_bootstrap_installers_cover_all_supported_agent_platforms() -> None:

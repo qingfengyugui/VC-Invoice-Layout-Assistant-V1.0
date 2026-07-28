@@ -1,4 +1,4 @@
-# Invoice Layout Agent
+# VC发票粘贴助手-V1.0
 
 把 PDF、图片、OFD、XML、ZIP/7z/TAR/RAR 或混合文件整理为可直接打印的 A4 报销附件，全程保留原始财务凭证内容，不生成、不补写、不美化票面。
 
@@ -17,14 +17,14 @@
 Windows PowerShell：
 
 ```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/qingfengyugui/invoice-layout-agent/main/install.ps1 -OutFile install.ps1
+Invoke-WebRequest https://raw.githubusercontent.com/qingfengyugui/VC-Invoice-Layout-Assistant-V1.0/main/install.ps1 -OutFile install.ps1
 .\install.ps1 -Platform codex
 ```
 
 macOS / Linux：
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/qingfengyugui/invoice-layout-agent/main/install.sh
+curl -fsSLO https://raw.githubusercontent.com/qingfengyugui/VC-Invoice-Layout-Assistant-V1.0/main/install.sh
 sh install.sh --platform codex
 ```
 

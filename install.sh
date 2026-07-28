@@ -3,7 +3,7 @@ set -eu
 
 platform=''
 destination=''
-repository='qingfengyugui/invoice-layout-agent'
+repository='qingfengyugui/VC-Invoice-Layout-Assistant-V1.0'
 force=0
 skip_mcp=0
 

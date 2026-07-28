@@ -3,7 +3,7 @@ param(
     [ValidateSet('codex', 'claude-code', 'openclaw', 'workbuddy', 'qoder', 'qclaw')]
     [string]$Platform,
     [string]$Destination,
-    [string]$Repository = 'qingfengyugui/invoice-layout-agent',
+    [string]$Repository = 'qingfengyugui/VC-Invoice-Layout-Assistant-V1.0',
     [switch]$Force,
     [switch]$SkipMcp
 )
