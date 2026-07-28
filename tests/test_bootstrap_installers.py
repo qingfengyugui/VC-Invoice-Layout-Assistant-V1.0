@@ -104,3 +104,12 @@ def test_windows_release_clears_accepted_warning_exit_code() -> None:
 
     assert "if ($LASTEXITCODE -notin 0,2) { exit $LASTEXITCODE }" in windows_smoke
     assert "exit 0" in windows_smoke
+
+
+def test_release_publish_explicitly_selects_repository() -> None:
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(
+        encoding="utf-8"
+    )
+    publish = release.split("publish:", maxsplit=1)[1]
+
+    assert '--repo "$GITHUB_REPOSITORY"' in publish
