@@ -342,7 +342,11 @@ def test_build_helper_runs_maven_and_copies_the_shaded_renderer(tmp_path: Path) 
 
     packaged = build_ofd_renderer(project_root, runner=fake_run)
 
-    assert calls == [(["mvn", "-q", "-DskipTests", "clean", "package"], renderer_dir, True)]
+    assert len(calls) == 1
+    command, cwd, check = calls[0]
+    assert Path(command[0]).name.casefold() in {"mvn", "mvn.cmd"}
+    assert command[1:] == ["-q", "-DskipTests", "clean", "package"]
+    assert (cwd, check) == (renderer_dir, True)
     assert packaged == project_root / "src" / "invoice_layout" / "bin" / "ofd-renderer.jar"
     assert packaged.read_bytes() == b"SHADED-OFDRENDERER"
 

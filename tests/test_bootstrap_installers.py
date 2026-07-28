@@ -73,3 +73,34 @@ def test_ci_pins_java17_compiler_and_avoids_mutable_font_download() -> None:
     assert "<release>17</release>" in pom
     assert "NotoSansCJKsc-Regular.otf" not in ci
     assert "raw.githubusercontent.com/notofonts" not in ci
+
+
+def test_windows_ci_exports_chocolatey_maven_and_uses_cmd_wrapper() -> None:
+    from tools.build_ofd_renderer import _maven_command
+
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+    resolved = r"C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.16\bin\mvn.cmd"
+
+    assert "-Filter 'mvn.cmd'" in ci
+    assert "$env:GITHUB_PATH" in ci
+    assert _maven_command(platform="win32", which=lambda _name: resolved) == [
+        resolved,
+        "-q",
+        "-DskipTests",
+        "clean",
+        "package",
+    ]
+
+
+def test_windows_release_clears_accepted_warning_exit_code() -> None:
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(
+        encoding="utf-8"
+    )
+    windows_smoke = release.split(
+        "- name: Smoke test complete Windows runtime", maxsplit=1
+    )[1].split("- name: Smoke test complete Unix runtime", maxsplit=1)[0]
+
+    assert "if ($LASTEXITCODE -notin 0,2) { exit $LASTEXITCODE }" in windows_smoke
+    assert "exit 0" in windows_smoke

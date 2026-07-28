@@ -43,8 +43,11 @@ jobs:
           choco install temurin17 maven poppler 7zip --no-progress --yes
           choco install tesseract --no-progress --yes --params "'/Language:chi_sim'"
           $javaHome = (Get-ChildItem 'C:\Program Files\Eclipse Adoptium' -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
+          $mavenCommand = Get-ChildItem (Join-Path $env:ChocolateyInstall 'lib\maven') -Recurse -File -Filter 'mvn.cmd' | Select-Object -First 1
+          if (-not $mavenCommand) { throw 'Chocolatey Maven wrapper not found' }
           "JAVA_HOME=$javaHome" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "$javaHome\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $mavenCommand.Directory.FullName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Install project
         run: |

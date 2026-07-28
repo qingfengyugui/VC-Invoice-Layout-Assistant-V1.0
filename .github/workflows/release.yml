@@ -124,6 +124,7 @@ jobs:
           & $exe process geometry.pdf --provider local --work-dir private-work --output-dir final-output
           if ($LASTEXITCODE -notin 0,2) { exit $LASTEXITCODE }
           if (-not (Test-Path final-output\printable.pdf) -or -not (Test-Path final-output\sendable.pdf)) { throw 'portable smoke outputs missing' }
+          exit 0
       - name: Smoke test complete Unix runtime
         if: runner.os != 'Windows'
         run: |
