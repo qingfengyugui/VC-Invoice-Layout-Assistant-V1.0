@@ -50,3 +50,11 @@ def test_bootstrap_installers_cover_all_supported_agent_platforms() -> None:
         "qclaw",
     ):
         assert platform in combined
+
+
+def test_linux_release_locates_ubuntu_noble_7zip_binary() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'echo "SEVEN_ZIP=$(command -v 7z)"' in workflow

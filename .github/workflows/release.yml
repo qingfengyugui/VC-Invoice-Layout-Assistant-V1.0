@@ -87,7 +87,7 @@ jobs:
       - name: Locate native dependencies on Linux
         if: runner.os == 'Linux'
         run: |
-          echo "SEVEN_ZIP=$(command -v 7zz)" >> "$GITHUB_ENV"
+          echo "SEVEN_ZIP=$(command -v 7z)" >> "$GITHUB_ENV"
       - name: Locate native dependencies on macOS
         if: runner.os == 'macOS'
         run: |
